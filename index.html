@@ -129,6 +129,7 @@ section{position:relative}
 /* 4 · Drift */
 #drift .pin{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);align-items:center;gap:4vw;padding:0 var(--pad);background:linear-gradient(180deg,var(--sand) 0%,#E7E7DF 100%)}
 .mapwrap{perspective:1400px;display:flex;justify-content:center}
+#drift .h-l{font-size:clamp(34px,3.9vw,64px);hyphens:auto;-webkit-hyphens:auto}
 .map{position:relative;width:min(760px,52vw);aspect-ratio:7/6;border-radius:22px;overflow:hidden;transform-origin:50% 70%;will-change:transform;box-shadow:0 40px 80px rgba(30,43,48,.18)}
 .map img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .map svg{position:absolute;inset:0;width:100%;height:100%}
@@ -700,10 +701,20 @@ footer svg{position:absolute;left:0;top:0;width:100%;height:60px}
 
   /* Kapitelanzeige rechts */
   var tideLinks = document.querySelectorAll('.tide a');
-  tideLinks.forEach(function (a) {
-    var sec = document.getElementById(a.dataset.k);
-    ScrollTrigger.create({ trigger: sec, start: 'top 55%', end: 'bottom 45%', onToggle: function (self) { if (self.isActive) { tideLinks.forEach(function (x) { x.classList.toggle('on', x === a); }); } } });
-  });
+  var tideBoxes = Array.prototype.map.call(tideLinks, function (a) { return document.getElementById(a.dataset.k); });
+  var tideOn = null;
+  function tideUpdate() {
+    var mid = innerHeight * 0.5, hit = null;
+    tideBoxes.forEach(function (el, i) {
+      var box = el.parentElement.classList.contains('pin-spacer') ? el.parentElement : el;
+      var r = box.getBoundingClientRect();
+      if (r.top <= mid && r.bottom >= mid) hit = tideLinks[i];
+    });
+    if (hit && hit !== tideOn) { tideOn = hit; tideLinks.forEach(function (x) { x.classList.toggle('on', x === hit); }); }
+  }
+  ScrollTrigger.addEventListener('refresh', tideUpdate);
+  ScrollTrigger.create({ start: 0, end: 'max', onUpdate: tideUpdate });
+  tideUpdate();
 
   if (reduce) {
     heroState.f = SCRUB - 1; drawHero();
@@ -781,7 +792,8 @@ footer svg{position:absolute;left:0;top:0;width:100%;height:60px}
     var p = throwState.p, W = window.innerWidth, H = window.innerHeight, hz = horizon();
     var e = 1 - Math.pow(1 - p, 2.2);
     var x0 = W * 0.42, y0 = H * 1.05, x1 = hz.x, y1 = hz.y;
-    var x = x0 + (x1 - x0) * e, y = y0 + (y1 - y0) * e - Math.sin(Math.PI * Math.min(1, e)) * H * 0.42;
+    var lift = portrait ? 0.1 : 0.42; /* im Hochformat flacher, damit die Flasche nicht durch den Text fliegt */
+    var x = x0 + (x1 - x0) * e, y = y0 + (y1 - y0) * e - Math.sin(Math.PI * Math.min(1, e)) * H * lift;
     var sc = 1.25 - 1.15 * e;
     tcan.style.transform = 'translate(' + (x - 90) + 'px,' + (y - 90) + 'px) scale(' + Math.max(0.06, sc) + ') rotate(' + (-20 + 50 * p) + 'deg)';
     tcan.style.opacity = p > 0.985 ? 0 : 1;
