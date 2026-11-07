@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strandgut · Flaschenpost, die wirklich treibt</title>
+<meta name="description" content="Strandgut ist anonyme Flaschenpost. Schreib einen Brief, wirf ihn ins Meer, und bei Ebbe spült er an einem fremden Strand an.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --sand:#F1ECE3;--sand2:#EDE6DA;--paper:#FBF8F2;--wet:#E4DCCD;--shallow:#D5E2DF;--glass:#6E9C8E;--glassL:#D6E7E0;
+  --deep:#2F6B5E;--ink:#1E2B30;--muted:#4E5E63;--line:#D3CABA;--cork:#B98B5E;--amber:#E1C29E;--night:#172126;
+  --serif:'Newsreader',Georgia,serif;--sans:'Instrument Sans',system-ui,sans-serif;
+  --pad:clamp(20px,4vw,56px);
+}
+*{box-sizing:border-box}
+html{background:var(--sand)}
+html.lenis,html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto!important}
+body{margin:0;background:var(--sand);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+img{display:block;max-width:100%}
+.serif{font-family:var(--serif);font-weight:400}
+.label{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:0 28px;border-radius:27px;background:var(--ink);color:var(--paper);text-decoration:none;font:500 16px var(--sans);border:0;cursor:pointer;transition:transform .4s cubic-bezier(.2,.7,.2,1),background .3s}
+.btn:hover{transform:translateY(-2px)}
+.btn.ghost{background:none;color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.btn:focus-visible,a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--deep);outline-offset:3px}
+
+/* Nacht-Ebene: liegt hinter allem und wird beim Finden dunkel */
+#nightsky{position:fixed;inset:0;background:var(--night);opacity:0;pointer-events:none;z-index:0}
+main{position:relative;z-index:1}
+
+/* Navigation */
+.nav{position:fixed;left:0;right:0;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:18px var(--pad);pointer-events:none;transition:color .6s}
+.nav>*{pointer-events:auto}
+.nav .mark{font-family:var(--serif);font-size:26px;text-decoration:none;letter-spacing:-.01em}
+.nav .btn{min-height:44px;padding:0 20px;font-size:14px}
+body.is-night .nav{color:var(--paper)}
+body.is-night .nav .btn{background:var(--paper);color:var(--ink)}
+
+/* Gezeitenleiste rechts: zeigt, wo man auf der Reise ist */
+.tide{position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:14px;align-items:flex-end}
+.tide a{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:12px;color:var(--muted);transition:color .4s}
+.tide a span{opacity:0;transform:translateX(6px);transition:opacity .35s,transform .35s;white-space:nowrap}
+.tide a:hover span,.tide a.on span{opacity:1;transform:none}
+.tide a i{width:8px;height:8px;border-radius:4px;border:1px solid currentColor;transition:background .4s,transform .4s}
+.tide a.on{color:var(--ink)}
+.tide a.on i{background:currentColor;transform:scale(1.25)}
+body.is-night .tide a{color:rgba(251,248,242,.55)}
+body.is-night .tide a.on{color:var(--paper)}
+@media (max-width:820px){.tide{display:none}}
+
+/* Ladebildschirm */
+#loader{position:fixed;inset:0;z-index:100;background:var(--sand);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .9s ease,visibility .9s}
+#loader.done{opacity:0;visibility:hidden}
+#loader .serif{font-size:clamp(40px,6vw,64px)}
+#loader svg{width:180px;height:18px;overflow:visible}
+#loader .lbl{font-size:13px;color:var(--muted)}
+
+/* Allgemein: Szenen */
+section{position:relative}
+.pin{position:relative;height:100vh;height:100svh;overflow:hidden}
+.kicker{display:flex;align-items:center;gap:12px}
+.kicker b{font:500 12px var(--sans);letter-spacing:.14em;text-transform:uppercase}
+.kicker i{display:block;width:28px;height:1px;background:currentColor;opacity:.5}
+.h-xl{font-family:var(--serif);font-weight:400;font-size:clamp(44px,7.4vw,118px);line-height:.98;letter-spacing:-.02em;margin:0}
+.h-l{font-family:var(--serif);font-weight:400;font-size:clamp(36px,5vw,76px);line-height:1.02;letter-spacing:-.015em;margin:0}
+.lead{font-size:clamp(16px,1.35vw,19px);line-height:1.55;color:var(--muted);max-width:34ch;margin:0}
+.word{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em}
+.word>span{display:inline-block;will-change:transform}
+
+/* 1 · Ankunft */
+#ankunft{height:520vh}
+#ankunft .stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
+#hero{position:absolute;inset:0;width:100%;height:100%;background:var(--shallow)}
+#ankunft .veil{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 40%,rgba(0,0,0,0) 40%,rgba(23,33,38,.18) 100%);pointer-events:none}
+.hero-title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--ink);pointer-events:none}
+.hero-title h1{font-family:var(--serif);font-weight:400;font-size:clamp(72px,15vw,240px);line-height:.9;letter-spacing:-.035em;margin:0}
+.hero-title p{font-family:var(--serif);font-style:italic;font-size:clamp(18px,2vw,28px);margin:14px 0 0;color:#2F3D42}
+.scrollhint{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#2F3D42}
+.scrollhint svg{width:46px;height:12px}
+.scrollhint path{animation:hintwave 2.4s ease-in-out infinite}
+@keyframes hintwave{50%{transform:translateY(3px)}}
+.hero-step{position:absolute;max-width:min(460px,80vw);opacity:0;pointer-events:none}
+.hero-step .serif{font-size:clamp(30px,3.6vw,56px);line-height:1.05;letter-spacing:-.01em;margin:0}
+.hero-step p{margin:16px 0 0}
+#hs1{left:var(--pad);top:22vh}
+#hs2{right:calc(var(--pad) + 40px);bottom:16vh;text-align:right}
+#hs2 .lead{margin-left:auto}
+#hs3{left:var(--pad);bottom:12vh;pointer-events:auto}
+#hs3 .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.glasspanel{background:rgba(251,248,242,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:26px 28px;border-radius:20px;box-shadow:0 20px 50px rgba(30,43,48,.10)}
+
+/* 2 · Schreiben */
+#schreiben .pin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);align-items:center;gap:4vw;padding:0 var(--pad)}
+.copy{position:relative;z-index:2}
+.copy .h-l{margin:18px 0 22px}
+.copy-swap{position:relative;min-height:15em}
+.copy-swap>div{position:absolute;inset:0 0 auto 0}
+.desk{position:relative;height:min(76vh,700px);perspective:1600px;display:flex;align-items:center;justify-content:center}
+.card{position:relative;width:min(440px,38vw);aspect-ratio:350/460;transform-style:preserve-3d;will-change:transform}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--paper);border-radius:6px;box-shadow:0 1px 0 var(--line),0 2px 4px rgba(30,43,48,.04),0 30px 60px rgba(30,43,48,.12);padding:clamp(22px,2.6vw,38px)}
+.face::after{content:"";position:absolute;inset:0;border-radius:6px;background:radial-gradient(120% 90% at 50% 0%,rgba(255,255,255,.7),rgba(255,255,255,0) 60%),radial-gradient(140% 120% at 50% 110%,rgba(185,139,94,.09),rgba(185,139,94,0) 55%);pointer-events:none}
+.face.back{transform:rotateY(180deg)}
+.face .meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.letter{font-family:var(--serif);font-style:italic;font-size:clamp(16px,1.45vw,21px);line-height:2;margin:0;background-image:linear-gradient(to bottom,rgba(110,156,142,0) calc(2em - 1px),rgba(110,156,142,.3) calc(2em - 1px),rgba(110,156,142,.3) 2em);background-size:100% 2em;min-height:14em}
+.letter .c{opacity:.06;transition:none}
+.letter .caret{display:inline-block;width:1px;height:1.1em;background:var(--ink);vertical-align:-.2em;margin-left:1px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.drawing{position:absolute;inset:16% 8% 10%;width:84%;height:74%}
+.drawing path{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.bottle-stand{position:absolute;right:4%;bottom:6%;width:min(130px,10vw);opacity:0;will-change:transform}
+.cork-note{position:absolute;right:2%;bottom:2%;font-size:13px;color:var(--muted);opacity:0}
+
+/* 3 · Wurf */
+#wurf .pin{background:#DCE8E3}
+#meer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#tumble{position:absolute;left:0;top:0;width:180px;height:180px;will-change:transform;pointer-events:none}
+.ripple{position:absolute;left:0;top:0;width:10px;height:3px;border-radius:50%;border:1.5px solid rgba(251,248,242,.95);opacity:0;pointer-events:none}
+#wurf .copy{position:absolute;left:var(--pad);top:18vh;max-width:520px}
+#wurf .after{position:absolute;right:var(--pad);bottom:14vh;text-align:right;opacity:0}
+#wurf .after .h-l{font-style:italic}
+.swipe{display:inline-flex;align-items:center;gap:10px;margin-top:22px;font-size:13px;color:var(--muted)}
+.swipe svg{width:18px;height:26px}
+
+/* 4 · Drift */
+#drift .pin{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);align-items:center;gap:4vw;padding:0 var(--pad);background:linear-gradient(180deg,var(--sand) 0%,#E7E7DF 100%)}
+.mapwrap{perspective:1400px;display:flex;justify-content:center}
+.map{position:relative;width:min(760px,52vw);aspect-ratio:7/6;border-radius:22px;overflow:hidden;transform-origin:50% 70%;will-change:transform;box-shadow:0 40px 80px rgba(30,43,48,.18)}
+.map img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.map svg{position:absolute;inset:0;width:100%;height:100%}
+.chip{position:absolute;padding:4px 10px;border-radius:12px;background:rgba(251,248,242,.94);box-shadow:0 1px 3px rgba(30,43,48,.16);font-size:12px;white-space:nowrap;opacity:0;transform:translateY(6px)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--ink);margin-top:30px;max-width:460px}
+.stats div{padding:16px 0}
+.stats b{display:block;font:400 clamp(30px,3vw,44px)/1 var(--serif);font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;color:var(--muted)}
+
+/* 5 · Finden */
+#finden .pin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:4vw;padding:0 var(--pad);color:var(--paper)}
+#finden .lead{color:rgba(251,248,242,.72)}
+.phonewrap{perspective:1600px;display:flex;justify-content:center}
+.phone{position:relative;width:min(330px,26vw);aspect-ratio:390/844;border-radius:48px;padding:11px;background:#0C1215;box-shadow:0 0 0 1px rgba(255,255,255,.06),0 50px 100px rgba(0,0,0,.45);transform-style:preserve-3d;will-change:transform}
+.screen{position:relative;width:100%;height:100%;border-radius:38px;overflow:hidden;background:var(--night)}
+.screen img{position:absolute;left:0;top:0;width:100%}
+.screen .bg{height:100%;object-fit:cover}
+.ui-top{position:absolute;left:7%;right:7%;top:6.5%;display:flex;justify-content:space-between;color:var(--paper);font-size:11px}
+.ui-top .serif{font-size:22px;line-height:1}
+.glowring{position:absolute;left:34%;top:33.5%;width:36%;height:11%;border-radius:50%;border:1.5px solid rgba(246,226,184,.9);box-shadow:0 0 18px rgba(246,226,184,.6);opacity:0}
+.tap{position:absolute;left:50%;top:38%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:rgba(251,248,242,.35);opacity:0}
+.readsheet{position:absolute;left:0;right:0;bottom:0;height:78%;background:var(--sand);border-radius:28px 28px 0 0;padding:22px 18px;transform:translateY(105%);color:var(--ink);will-change:transform}
+.readsheet .paper{background:var(--paper);border-radius:6px;padding:18px 16px;box-shadow:0 1px 0 var(--line),0 16px 32px rgba(30,43,48,.08)}
+.readsheet .paper p{font-family:var(--serif);font-style:italic;font-size:15px;line-height:1.45;margin:0}
+.readsheet .meta{font-size:10px;color:var(--muted);margin:0 0 10px}
+.readsheet .mini{display:block;margin-top:12px;min-height:34px;border-radius:17px;background:var(--ink);color:var(--paper);font-size:11px;display:flex;align-items:center;justify-content:center}
+#shell{position:absolute;width:86px;opacity:0;pointer-events:none;filter:drop-shadow(0 8px 14px rgba(0,0,0,.25))}
+
+/* 6 · Staffel (waagerecht) */
+#staffel .pin{color:var(--paper)}
+.track{position:absolute;left:0;top:0;height:100%;display:flex;align-items:center;gap:6vw;padding:0 var(--pad);will-change:transform}
+.panel{flex:none}
+.panel.intro{width:min(560px,80vw)}
+.relay{position:relative;width:min(300px,72vw);background:var(--paper);color:var(--ink);border-radius:6px;padding:26px 24px 22px;box-shadow:0 30px 60px rgba(0,0,0,.25)}
+.relay:nth-child(odd){transform:rotate(-1.2deg) translateY(-4vh)}
+.relay:nth-child(even){transform:rotate(1deg) translateY(5vh)}
+.relay .n{font:500 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.relay p{font:italic 400 clamp(19px,1.7vw,24px)/1.35 var(--serif);margin:12px 0 18px}
+.relay .sea{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--deep)}
+.relay .sea i{width:8px;height:8px;border-radius:50%;background:var(--glass)}
+.panel.home{width:min(560px,82vw);color:var(--ink)}
+.routeline{position:absolute;left:0;top:50%;height:2px;width:100%;pointer-events:none}
+
+/* 7 · Regal */
+#regal{padding:18vh var(--pad) 10vh}
+#regal .grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:5vw;align-items:center}
+.shelf{position:relative;width:min(560px,100%);margin-left:auto;aspect-ratio:780/972;border-radius:22px;overflow:hidden;box-shadow:0 40px 80px rgba(30,43,48,.14)}
+.shelf img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.shelf .shade{position:absolute;left:0;right:0;background:var(--sand2);transform-origin:50% 100%}
+.tag{position:absolute;transform:translate(-50%,0) scale(.6);padding:2px 8px;border-radius:4px;background:var(--paper);box-shadow:0 1px 2px rgba(30,43,48,.2);font-size:clamp(9px,.85vw,11px);white-space:nowrap;opacity:0}
+.glassrow{display:flex;align-items:center;gap:14px;margin-top:30px}
+.glassrow img{width:64px}
+
+/* 8 · Was es hier nicht gibt */
+#nicht{padding:16vh var(--pad)}
+.nots{margin-top:5vh;border-top:1px solid var(--ink)}
+.not{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:4vw;align-items:center;padding:3.2vh 0;border-bottom:1px solid var(--line)}
+.not .w{position:relative;display:inline-block;font:400 clamp(48px,8vw,128px)/1 var(--serif);letter-spacing:-.03em}
+.not .w::after{content:"";position:absolute;left:-2%;right:-2%;top:54%;height:max(3px,.06em);background:var(--ink);transform:scaleX(var(--s,0));transform-origin:0 50%}
+.not p{font-size:clamp(16px,1.3vw,19px);line-height:1.5;color:var(--muted);margin:0;max-width:36ch}
+
+/* 9 · Erste Flasche */
+#erste{padding:14vh var(--pad);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5vw;align-items:center}
+.form{position:relative;background:var(--paper);border-radius:6px;padding:30px;box-shadow:0 1px 0 var(--line),0 30px 60px rgba(30,43,48,.10);max-width:520px}
+.form textarea{width:100%;border:0;resize:none;background:transparent;font:italic 400 20px/32px var(--serif);color:var(--ink);background-image:linear-gradient(to bottom,rgba(110,156,142,0) 31px,rgba(110,156,142,.3) 31px,rgba(110,156,142,.3) 32px);background-size:100% 32px;background-attachment:local;min-height:192px;outline:none;padding:0}
+.form textarea::placeholder{color:#7A8689}
+.form .row{display:flex;justify-content:space-between;align-items:center;margin:8px 0 18px;font-size:12px;color:var(--muted)}
+.form input{width:100%;min-height:50px;border:1px solid var(--line);border-radius:25px;padding:0 20px;font:16px var(--sans);background:var(--sand);color:var(--ink);outline:none}
+.form input:focus{border-color:var(--deep)}
+.form .btn{width:100%;margin-top:12px}
+.form small{display:block;margin-top:12px;font-size:12px;line-height:1.45;color:var(--muted)}
+.form .ok{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:30px;background:var(--paper);border-radius:6px;opacity:0;pointer-events:none}
+.form .ok img{width:64px}
+.form.sent .ok{opacity:1;pointer-events:auto;transition:opacity .8s .3s}
+
+/* 10 · Leuchtturm, Buchten, Fragen, Fuß */
+#mehr{padding:8vh var(--pad) 12vh;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.offer{border-radius:24px;padding:clamp(28px,3vw,44px);min-height:420px;display:flex;flex-direction:column;gap:16px;position:relative;overflow:hidden}
+.offer.dark{background:var(--ink);color:var(--paper)}
+.offer.dark .muted{color:rgba(251,248,242,.7)}
+.offer.light{background:var(--paper)}
+.offer .price{font:400 64px/1 var(--serif)}
+.offer ul{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.offer li{display:flex;gap:12px;font-size:15px}
+.offer li::before{content:"";flex:none;width:6px;height:6px;border-radius:3px;background:var(--glass);margin-top:8px}
+.offer .btn{margin-top:auto;align-self:flex-start}
+.offer.dark .btn{background:var(--paper);color:var(--ink)}
+.offer .deco{position:absolute;right:-20px;bottom:-30px;width:46%;opacity:.95;pointer-events:none}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tags span{padding:6px 12px;border-radius:14px;border:1px solid var(--line);font-size:13px}
+#fragen{padding:6vh var(--pad) 14vh;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:5vw}
+details{border-bottom:1px solid var(--line)}
+details:first-of-type{border-top:1px solid var(--ink)}
+summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:22px 0;font:400 clamp(20px,1.8vw,26px)/1.25 var(--serif)}
+summary::-webkit-details-marker{display:none}
+summary i{flex:none;width:14px;height:14px;position:relative}
+summary i::before,summary i::after{content:"";position:absolute;left:0;right:0;top:6.5px;height:1.2px;background:var(--ink);transition:transform .4s}
+summary i::after{transform:rotate(90deg)}
+details[open] summary i::after{transform:rotate(0)}
+details p{margin:0 0 22px;font-size:16px;line-height:1.55;color:var(--muted);max-width:56ch}
+footer{position:relative;padding:12vh var(--pad) 40px;overflow:hidden;background:var(--ink);color:var(--paper)}
+footer .big{font:400 clamp(90px,20vw,320px)/.82 var(--serif);letter-spacing:-.045em;margin:0 0 6vh -0.04em}
+footer .row{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;font-size:13px;color:rgba(251,248,242,.7)}
+footer .row a{color:var(--paper);margin-left:18px}
+footer svg{position:absolute;left:0;top:0;width:100%;height:60px}
+
+/* Kleinere Bildschirme */
+@media (max-width:820px){
+  #schreiben .pin,#drift .pin,#finden .pin,#erste,#regal .grid,#fragen,#mehr{grid-template-columns:1fr}
+  #schreiben .pin{align-content:center;gap:2vh}
+  .copy-swap{min-height:9.5em}
+  .desk{height:52vh}
+  .card{width:min(300px,70vw)}
+  .bottle-stand{width:72px}
+  #drift .pin,#finden .pin{align-content:center;gap:3vh}
+  .map{width:min(92vw,520px)}
+  .phone{width:min(220px,56vw)}
+  #finden .copy{text-align:left}
+  #wurf .copy{top:12vh;right:var(--pad)}
+  .stats{margin-top:18px}
+  .not{grid-template-columns:1fr;gap:10px}
+  .shelf{margin:0 auto}
+  #hs1{top:14vh}
+  #hs2{right:var(--pad);bottom:20vh}
+}
+@media (prefers-reduced-motion:reduce){
+  .scrollhint path,.letter .caret{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="nightsky" aria-hidden="true"></div>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="serif">Strandgut</div>
+  <svg viewBox="0 0 180 18" aria-hidden="true"><path d="M0 9 C 15 1, 30 1, 45 9 S 75 17, 90 9 S 120 1, 135 9 S 165 17, 180 9" fill="none" stroke="#D3CABA" stroke-width="1.5"/><path id="loadwave" d="M0 9 C 15 1, 30 1, 45 9 S 75 17, 90 9 S 120 1, 135 9 S 165 17, 180 9" fill="none" stroke="#2F6B5E" stroke-width="1.5" stroke-dasharray="200" stroke-dashoffset="200"/></svg>
+  <div class="lbl">Die Flut kommt</div>
+</div>
+
+<header class="nav">
+  <a class="mark" href="#ankunft" aria-label="Strandgut, nach oben">Strandgut</a>
+  <a class="btn" href="#erste">Erste Flasche werfen</a>
+</header>
+
+<nav class="tide" aria-label="Kapitel">
+  <a href="#ankunft" data-k="ankunft"><span>Ankunft</span><i></i></a>
+  <a href="#schreiben" data-k="schreiben"><span>Schreiben</span><i></i></a>
+  <a href="#wurf" data-k="wurf"><span>Wurf</span><i></i></a>
+  <a href="#drift" data-k="drift"><span>Drift</span><i></i></a>
+  <a href="#finden" data-k="finden"><span>Finden</span><i></i></a>
+  <a href="#staffel" data-k="staffel"><span>Staffel</span><i></i></a>
+  <a href="#regal" data-k="regal"><span>Regal</span><i></i></a>
+  <a href="#erste" data-k="erste"><span>Erste Flasche</span><i></i></a>
+</nav>
+
+<main>
+
+<!-- 1 · Ankunft: das Intro als Bildsequenz, gesteuert vom Scrollen -->
+<section id="ankunft" aria-label="Ankunft">
+  <div class="stage">
+    <canvas id="hero" role="img" aria-label="Eine Flasche treibt im Meer heran. Die Ebbe legt den Strand frei, die Flasche bleibt im nassen Sand liegen, weiche Wellen laufen an."></canvas>
+    <div class="veil"></div>
+    <div class="hero-title" id="htitle">
+      <h1 data-split>Strandgut</h1>
+      <p data-split>Flaschenpost, die wirklich treibt.</p>
+    </div>
+    <div class="scrollhint" id="hint"><svg viewBox="0 0 46 12" aria-hidden="true"><path d="M1 6 C 7 1, 13 1, 19 6 S 31 11, 37 6 S 43 2, 45 4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>Scrollen</div>
+    <div class="hero-step" id="hs1"><p class="serif">Irgendwo treibt gerade ein Brief.</p><p class="lead">Ohne Absender. Ohne Ziel. Nur mit dem, was jemand sonst niemandem sagt.</p></div>
+    <div class="hero-step" id="hs2"><p class="serif">Zweimal am Tag ist Ebbe.</p><p class="lead">Dann liegt vielleicht etwas an deinem Strand. Aus Portugal, aus Island oder von nebenan.</p></div>
+    <div class="hero-step glasspanel" id="hs3">
+      <div class="kicker"><i></i><b>Für iPhone · Die Nordsee öffnet zuerst</b></div>
+      <h2 class="h-l" style="margin:16px 0 14px">Wirf eine Flasche ins Meer.</h2>
+      <p class="lead">Strandgut ist anonyme Flaschenpost. Kein Profil, kein Chat, keine Likes. Nur Briefe und Zeichnungen, die an einem fremden Strand ankommen.</p>
+      <div class="row"><a class="btn" href="#erste">Erste Flasche werfen</a><a class="btn ghost" href="#schreiben">So treibt es</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 · Schreiben: der Brief schreibt sich, dreht sich um, rollt sich in die Flasche -->
+<section id="schreiben" aria-label="Schreiben">
+  <div class="pin">
+    <div class="copy">
+      <div class="kicker"><i></i><b>1 · Schreiben</b></div>
+      <div class="copy-swap">
+        <div id="sc1"><h2 class="h-l" data-split>Schreib, was du sonst niemandem sagst.</h2><p class="lead">Ohne Namen, ohne Profil. Eine Flasche pro Woche, und sie ist immer kostenlos.</p></div>
+        <div id="sc2" style="opacity:0"><h2 class="h-l">Bilder brauchen keine Sprache.</h2><p class="lead">Auf der Rückseite ist Platz für eine Zeichnung. Wer sie findet, sieht sie Strich für Strich entstehen.</p></div>
+        <div id="sc3" style="opacity:0"><h2 class="h-l">Rollen. Verkorken. Fertig.</h2><p class="lead">Bevor sie losschwimmt, wird jede Flasche geprüft. Namen, Nummern und Links nimmt das Meer nicht an.</p></div>
+      </div>
+    </div>
+    <div class="desk">
+      <div class="card" id="card">
+        <div class="face front">
+          <div class="meta"><span class="label">Brief</span><span class="label" id="count">0 / 600</span></div>
+          <p class="letter" id="letter">Liebe fremde Person, heute früh habe ich den ersten Kaffee getrunken, bevor irgendwer wach war. Das Haus war still, nur der Kühlschrank hat gesummt. Ich weiß nicht, wo du das liest. Aber ich hoffe, du hattest heute auch so einen Moment.</p>
+        </div>
+        <div class="face back">
+          <div class="meta"><span class="label">Rückseite</span></div>
+          <svg class="drawing" viewBox="0 0 350 300" aria-hidden="true">
+            <path d="M262 60 m -24 0 a 24 24 0 1 0 48 0 a 24 24 0 1 0 -48 0"/>
+            <path d="M262 22 L262 10 M290 32 L299 23 M300 60 L312 60 M234 32 L225 23"/>
+            <path d="M18 176 C 90 166, 170 186, 332 172"/>
+            <path d="M112 156 L 228 156 L 210 178 L 130 178 Z"/>
+            <path d="M168 156 L 168 82 L 212 146 Z"/>
+            <path d="M48 222 c 15 -10 30 -10 45 0 s 30 10 45 0 M186 244 c 15 -10 30 -10 45 0 s 30 10 45 0"/>
+          </svg>
+        </div>
+      </div>
+      <img class="bottle-stand" id="standbottle" src="img/st_klar.webp" alt="" width="232" height="512">
+      <span class="cork-note" id="corknote">verkorkt</span>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Wurf: die Flasche überschlägt sich bis zum Horizont -->
+<section id="wurf" aria-label="Wurf">
+  <div class="pin">
+    <picture><source media="(max-aspect-ratio: 1/1)" srcset="img/meer_m.webp"><img id="meer" src="img/meer_d.webp" alt="Blick vom Strand über das Meer bis zum Horizont"></picture>
+    <canvas id="tumble" width="360" height="360" aria-hidden="true"></canvas>
+    <span class="ripple" id="r1"></span><span class="ripple" id="r2"></span>
+    <div class="copy">
+      <div class="kicker"><i></i><b>2 · Wurf</b></div>
+      <h2 class="h-xl" style="margin-top:18px" data-split>Wirf sie.</h2>
+      <p class="lead" style="margin-top:18px">Mit einem Wisch nach oben fliegt sie bis zum Horizont. Dann gehört sie dem Meer.</p>
+      <span class="swipe"><svg viewBox="0 0 18 26" aria-hidden="true"><path d="M9 25 V3 M2 10 L9 3 L16 10" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Wischen</span>
+    </div>
+    <div class="after" id="after"><p class="h-l">Sie treibt.</p></div>
+  </div>
+</section>
+
+<!-- 4 · Drift: Seekarte, die Route zeichnet sich -->
+<section id="drift" aria-label="Drift">
+  <div class="pin">
+    <div class="copy">
+      <div class="kicker"><i></i><b>3 · Drift</b></div>
+      <h2 class="h-l" style="margin:18px 0 22px" data-split>Sie folgt echten Meeresströmungen.</h2>
+      <p class="lead">Auf der Karte siehst du, wie weit sie kommt, wie oft sie gefunden wird und wann eine Muschel zurückkommt.</p>
+      <div class="stats" aria-live="off">
+        <div><b id="sDays">0</b><span>Tage</span></div>
+        <div><b id="sKm">0</b><span>km getrieben</span></div>
+        <div><b id="sFound">0×</b><span>gefunden</span></div>
+      </div>
+    </div>
+    <div class="mapwrap">
+      <div class="map" id="map">
+        <img src="img/karte.webp" alt="Seekarte mit zwei Küsten. Ein Leuchtturm steht am Startstrand, die Flasche treibt vor der fremden Küste.">
+        <svg viewBox="0 0 350 300" aria-hidden="true">
+          <path id="routeShadow" fill="none" stroke="#1E2B30" stroke-opacity=".22" stroke-width="4" stroke-linecap="round"/>
+          <path id="route" fill="none" stroke="#FBF8F2" stroke-width="2" stroke-linecap="round" stroke-dasharray="0.5 6"/>
+          <path id="routeMask" fill="none" stroke="#000" stroke-width="0"/>
+          <path id="prog" fill="none" stroke="#FBF8F2" stroke-opacity=".8" stroke-width="1.5" stroke-dasharray="5 5" stroke-linecap="round" opacity="0"/>
+          <g id="stops"></g>
+          <circle id="startdot" r="5.5" fill="#1E2B30" stroke="#FBF8F2" stroke-width="2"/>
+          <circle id="marker" r="6" fill="#FBF8F2" stroke="#1E2B30" stroke-width="1.5"/>
+          <circle id="halo" r="16" fill="none" stroke="#FBF8F2" stroke-width="1.5" opacity="0"/>
+        </svg>
+        <span class="chip" id="cStart" style="right:4%;bottom:5%">Sylt · Start</span>
+        <span class="chip" id="cA">Tag 3 · gefunden in der Biskaya</span>
+        <span class="chip" id="cB">Tag 7 · gefunden vor Cornwall</span>
+        <span class="chip" id="cNow" style="font-weight:600">heute</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · Finden: Nacht, die Flasche leuchtet, der Brief rollt sich auf -->
+<section id="finden" aria-label="Finden">
+  <div class="pin">
+    <div class="copy">
+      <div class="kicker"><i></i><b>4 · Finden</b></div>
+      <div class="copy-swap" style="min-height:13em">
+        <div id="fc1"><h2 class="h-l" data-split>Jemand findet sie.</h2><p class="lead" style="margin-top:20px">Bei Ebbe, an einem fremden Strand. Nachts leuchtet der Brief in der Flasche.</p></div>
+        <div id="fc2" style="opacity:0"><h2 class="h-l">Antworten gibt es als Muschel.</h2><p class="lead" style="margin-top:20px">Eine Muschel heißt: Ich habe dich gelesen. Niemand erfährt, von wem. Niemand kann dich anschreiben.</p></div>
+      </div>
+    </div>
+    <div class="phonewrap">
+      <div class="phone" id="phone">
+        <div class="screen">
+          <img class="bg" src="img/nacht.webp" alt="">
+          <img src="img/wellen_nacht.webp" alt="" style="height:auto">
+          <div class="ui-top"><div><div class="serif">Sylt</div><div style="opacity:.75;margin-top:3px">Nordsee · 54,9° N</div></div><div style="text-align:right"><b>Ebbe</b><div style="opacity:.75;margin-top:3px">bis 20:30</div></div></div>
+          <span class="glowring" id="glow"></span>
+          <span class="tap" id="tap"></span>
+          <div class="readsheet" id="sheet">
+            <p class="meta">Angespült heute, 19:42 · aus der Nordsee</p>
+            <div class="paper"><p>Liebe fremde Person, heute früh habe ich den ersten Kaffee getrunken, bevor irgendwer wach war. Ich hoffe, du hattest heute auch so einen Moment.</p></div>
+            <span class="mini">Muschel zurückschicken</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <img id="shell" src="img/muschel.webp" alt="">
+  </div>
+</section>
+
+<!-- 6 · Staffel: waagerecht über sieben Strände -->
+<section id="staffel" aria-label="Die Staffelflasche">
+  <div class="pin">
+    <div class="track" id="track">
+      <div class="panel intro">
+        <div class="kicker" style="color:rgba(251,248,242,.8)"><i></i><b>5 · Die Staffelflasche</b></div>
+        <h2 class="h-xl" style="margin:18px 0 22px" data-split>Ein Brief von sieben Fremden.</h2>
+        <p class="lead" style="color:rgba(251,248,242,.72)">Wer sie findet, fügt eine Zeile an und wirft sie weiter. Nach sieben Stränden kommt sie zu dir zurück.</p>
+        <p style="font:italic 400 clamp(20px,1.8vw,26px)/1.35 var(--serif);margin:34px 0 0;color:var(--paper)">„Was ist das Leiseste, das dich heute glücklich gemacht hat?“</p>
+      </div>
+      <div class="relay"><span class="n">Zeile 1</span><p>Der erste Kaffee, bevor jemand wach war.</p><span class="sea"><i></i>Nordsee</span></div>
+      <div class="relay"><span class="n">Zeile 2</span><p>Meine Katze schlief auf meinen Füßen.</p><span class="sea"><i></i>Ärmelkanal</span></div>
+      <div class="relay"><span class="n">Zeile 3</span><p>Regen auf dem Dachfenster.</p><span class="sea"><i></i>Biskaya</span></div>
+      <div class="relay"><span class="n">Zeile 4</span><p>Ein Fremder hat mir die Tür aufgehalten.</p><span class="sea"><i></i>Azoren</span></div>
+      <div class="relay"><span class="n">Zeile 5</span><p>Frische Bettwäsche.</p><span class="sea"><i></i>Irische See</span></div>
+      <div class="relay"><span class="n">Zeile 6</span><p>Diese Flasche zu finden.</p><span class="sea"><i></i>Hebriden</span></div>
+      <div class="relay"><span class="n">Zeile 7</span><p>Meine Oma hat gelacht, am Telefon.</p><span class="sea"><i></i>Nordsee</span></div>
+      <div class="panel home">
+        <div class="kicker"><i></i><b>41 Tage · 7 Strände · 2.380 km</b></div>
+        <h2 class="h-xl" style="margin:18px 0 22px">Heimgekehrt.</h2>
+        <p class="lead">Ein Brief, den niemand allein geschrieben hat. Er landet beim nächsten Niedrigwasser wieder an deinem Strand.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · Regal -->
+<section id="regal" aria-label="Regal">
+  <div class="grid">
+    <div class="copy">
+      <div class="kicker"><i></i><b>6 · Regal</b></div>
+      <h2 class="h-l" style="margin:18px 0 22px" data-split>Was dich berührt, bleibt.</h2>
+      <p class="lead">Jede gefundene Flasche kann ins Regal, mit dem Meer, aus dem sie kam. Und wenn der Strand leer ist, glitzert im Sand manchmal ein Stück Seeglas.</p>
+      <div class="glassrow"><img src="img/seeglas.webp" alt=""><span><b style="font-weight:500">23 Stück Seeglas</b><br><span style="font-size:13px;color:var(--muted)">bei Ebbe gesammelt</span></span></div>
+    </div>
+    <div class="shelf" id="shelf">
+      <img src="img/regal.webp" alt="Ein Holzregal mit zwölf gefundenen Flaschen auf drei Brettern">
+      <span class="shade" id="sh1" style="top:6.7%;height:30.6%"></span>
+      <span class="shade" id="sh2" style="top:37.4%;height:31.2%"></span>
+      <span class="shade" id="sh3" style="top:68.6%;height:31.4%"></span>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Was es hier nicht gibt -->
+<section id="nicht" aria-label="Was es hier nicht gibt">
+  <div class="kicker"><i></i><b>Bewusst weggelassen</b></div>
+  <h2 class="h-l" style="margin-top:18px" data-split>Was es hier nicht gibt.</h2>
+  <div class="nots">
+    <div class="not"><span class="w">Profile</span><p>Niemand sieht, wer du bist. Auch wir kennen deinen Namen nicht.</p></div>
+    <div class="not"><span class="w">Chat</span><p>Antworten gibt es als Zeile oder Muschel. Niemand kann dich anschreiben.</p></div>
+    <div class="not"><span class="w">Münzen</span><p>Lesen, Antworten und deine Wochenflasche sind kostenlos. Für immer.</p></div>
+    <div class="not"><span class="w">Werbung</span><p>Die einzige Mitteilung kommt bei Ebbe, und nur, wenn etwas angespült wurde.</p></div>
+  </div>
+</section>
+
+<!-- 9 · Erste Flasche -->
+<section id="erste" aria-label="Erste Flasche werfen">
+  <div class="copy">
+    <div class="kicker"><i></i><b>Vor dem Start</b></div>
+    <h2 class="h-l" style="margin:18px 0 22px" data-split>Wirf deine erste Flasche schon jetzt.</h2>
+    <p class="lead">Sie liegt am Ufer bereit und treibt los, sobald die Nordsee öffnet. Du bekommst genau eine Mail: wenn es so weit ist.</p>
+  </div>
+  <form class="form" id="form" novalidate>
+    <label class="label" for="ftext">Deine Flasche</label>
+    <textarea id="ftext" maxlength="600" rows="6" placeholder="Schreib, als würde es niemand lesen. Jemand wird es lesen."></textarea>
+    <div class="row"><span>Keine Namen, Nummern oder Handles.</span><span id="fcount">0 / 600</span></div>
+    <label class="label" for="fmail" style="display:block;margin-bottom:8px">E-Mail für den Start</label>
+    <input id="fmail" type="email" autocomplete="email" placeholder="du@beispiel.de">
+    <button class="btn" type="submit">In die Flasche damit</button>
+    <small id="ferr" role="alert"></small>
+    <div class="ok" aria-live="polite">
+      <img src="img/st_klar.webp" alt="">
+      <p class="serif" style="font-size:28px;margin:0">Deine Flasche liegt am Ufer.</p>
+      <p style="margin:0;color:var(--muted);font-size:14px;line-height:1.5">Sobald die Nordsee öffnet, treibt sie los. Bis dahin: nichts. Versprochen.</p>
+      <p style="margin:6px 0 0;font-size:12px;color:#7A8689">Vorschau der Seite: Hier wird noch nichts gespeichert oder verschickt.</p>
+    </div>
+  </form>
+</section>
+
+<section id="mehr" aria-label="Leuchtturm und Buchten">
+  <div class="offer dark">
+    <span class="label" style="color:rgba(251,248,242,.6)">Nur vor dem Start · 500 Stück</span>
+    <h2 class="h-l">Die Gründerflasche.</h2>
+    <p class="muted" style="margin:0;font-size:16px;line-height:1.55;max-width:36ch">Einmal zahlen, für immer Leuchtturmwärter. Für alle, die dieses Meer von Anfang an mit füllen wollen.</p>
+    <div><span class="price">49 €</span> <span class="muted" style="font-size:14px">einmalig, lebenslang</span></div>
+    <ul>
+      <li>Eine Flasche pro Tag statt pro Woche</li>
+      <li>Alle Tinten, Pinsel und Aquarell</li>
+      <li>Zeitkapseln, Logbuch und Nachtstrand</li>
+      <li>Die Flasche „Erste Flut“, nur für die ersten 500</li>
+    </ul>
+    <a class="btn" href="#erste">Gründerflasche sichern</a>
+  </div>
+  <div class="offer light">
+    <span class="label">Buchten</span>
+    <h2 class="h-l">Ein eigenes Meer für euren Abend.</h2>
+    <p style="margin:0;font-size:16px;line-height:1.55;color:var(--muted);max-width:38ch">Eine geschlossene Bucht für Hochzeiten, Festivals, Ausstellungen oder die Klassenfahrt. Gäste kommen per QR-Code hinein, ohne Konto. Am Ende gibt es alles als Erinnerungsbuch.</p>
+    <div class="tags"><span>Hochzeit</span><span>Festival</span><span>Ausstellung</span><span>Klassenfahrt</span></div>
+    <a class="btn ghost" href="#erste">Bucht anfragen</a>
+  </div>
+</section>
+
+<section id="fragen" aria-label="Fragen">
+  <div><div class="kicker"><i></i><b>Fragen vom Ufer</b></div><h2 class="h-l" style="margin-top:18px">Gut zu wissen.</h2></div>
+  <div>
+    <details><summary>Ist das wirklich anonym?<i></i></summary><p>Ja. Es gibt kein Konto und keinen Namen. Dein Strand ist mit einer Küste verbunden, nicht mit deinem Ort.</p></details>
+    <details><summary>Kann mich jemand anschreiben?<i></i></summary><p>Nein. Antworten gibt es nur als Zeile in einer Staffelflasche oder als Muschel. Kontaktdaten in Flaschen werden blockiert.</p></details>
+    <details><summary>Was passiert mit unangenehmen Flaschen?<i></i></summary><p>Jede Flasche wird vor dem Werfen geprüft und lässt sich mit einem Tipp versenken und melden. Wer oft auffällt, wirft ins Leere.</p></details>
+    <details><summary>Was kostet Strandgut?<i></i></summary><p>Lesen, Antworten und eine Flasche pro Woche sind kostenlos. Wer mehr schreiben oder in Farbe zeichnen möchte, kann Leuchtturmwärter werden.</p></details>
+    <details><summary>Ab welchem Alter?<i></i></summary><p>Ab 16 Jahren.</p></details>
+    <details><summary>Gibt es Strandgut auch für Android?<i></i></summary><p>Zum Start nur für iPhone. Android folgt, sobald das Meer voll genug ist.</p></details>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <svg viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true"><path id="footwave" d="M0 0 H1440 V18 C 1200 40, 960 0, 720 18 S 240 40, 0 18 Z" fill="#F1ECE3"/></svg>
+  <p class="big">Strandgut</p>
+  <div class="row"><span>Ein Projekt von Studio Odiri, Berlin.</span><span><a href="#ankunft">Nach oben</a><a href="#fragen">Fragen</a><a href="#erste">Erste Flasche werfen</a></span></div>
+</footer>
+
+<script src="js/gsap.min.js"></script>
+<script src="js/ScrollTrigger.min.js"></script>
+<script src="js/lenis.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var portrait = window.matchMedia('(max-aspect-ratio: 1/1)').matches;
+  var hasGsap = typeof window.gsap !== 'undefined' && typeof window.ScrollTrigger !== 'undefined';
+  var loader = document.getElementById('loader');
+  function finishLoader() { loader.classList.add('done'); }
+
+  /* ---------- Wörter teilen, damit Überschriften Wort für Wort auftauchen ---------- */
+  document.querySelectorAll('[data-split]').forEach(function (el) {
+    var words = el.textContent.trim().split(/\s+/);
+    el.setAttribute('aria-label', el.textContent.trim());
+    el.innerHTML = words.map(function (w) { return '<span class="word" aria-hidden="true"><span>' + w + '</span></span>'; }).join(' ');
+  });
+
+  /* ---------- Bildsequenz: lädt nach und nach, zeichnet weich überblendet ---------- */
+  function Seq(canvas, folder, count, ext) {
+    this.c = canvas; this.ctx = canvas.getContext('2d'); this.imgs = new Array(count); this.count = count;
+    this.folder = folder; this.ext = ext; this.loaded = 0; this.last = ''; this.fit = 'cover';
+  }
+  Seq.prototype.src = function (i) { return this.folder + ('00' + i).slice(-3) + this.ext; };
+  Seq.prototype.load = function (order, onEach) {
+    var self = this, k = 0, inflight = 0, max = 6;
+    function next() {
+      while (inflight < max && k < order.length) {
+        (function (i) {
+          var im = new Image(); im.decoding = 'async';
+          inflight++;
+          im.onload = im.onerror = function () { self.imgs[i] = im.naturalWidth ? im : null; self.loaded++; inflight--; if (onEach) onEach(self.loaded); next(); };
+          im.src = self.src(i);
+        })(order[k++]);
+      }
+    }
+    next();
+  };
+  Seq.prototype.nearest = function (i) {
+    if (this.imgs[i]) return this.imgs[i];
+    for (var d = 1; d < this.count; d++) {
+      if (this.imgs[i - d]) return this.imgs[i - d];
+      if (this.imgs[i + d]) return this.imgs[i + d];
+    }
+    return null;
+  };
+  Seq.prototype.size = function () {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), r = this.c.getBoundingClientRect();
+    this.c.width = Math.max(1, Math.round(r.width * dpr)); this.c.height = Math.max(1, Math.round(r.height * dpr)); this.last = '';
+  };
+  Seq.prototype.blit = function (img, alpha) {
+    var cw = this.c.width, ch = this.c.height, iw = img.naturalWidth, ih = img.naturalHeight;
+    var s = this.fit === 'cover' ? Math.max(cw / iw, ch / ih) : Math.min(cw / iw, ch / ih);
+    var w = iw * s, h = ih * s;
+    this.ctx.globalAlpha = alpha;
+    this.ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+  };
+  /* a, b: Bildindizes, t: Anteil von b (weiche Überblendung zwischen zwei Frames) */
+  Seq.prototype.draw = function (a, b, t) {
+    var key = a + ':' + b + ':' + Math.round(t * 24);
+    if (key === this.last) return; this.last = key;
+    var A = this.nearest(a), B = this.nearest(b);
+    if (!A) return;
+    if (this.fit !== 'cover') this.ctx.clearRect(0, 0, this.c.width, this.c.height);
+    this.blit(A, 1);
+    if (B && B !== A && t > 0.02) this.blit(B, t);
+    this.ctx.globalAlpha = 1;
+  };
+
+  /* ---------- 1 · Hero-Sequenz ---------- */
+  var SCRUB = 95, LOOP = 25, TOTAL = SCRUB + LOOP;
+  var heroCanvas = document.getElementById('hero');
+  var hero = new Seq(heroCanvas, portrait ? 'seq/m/' : 'seq/d/', TOTAL, '.webp');
+  hero.size();
+  var order = [0];
+  for (var s = 8; s >= 1; s = s >> 1) for (var i = 0; i < TOTAL; i += s) if (order.indexOf(i) < 0) order.push(i);
+  var needed = 18, loaderDone = false;
+  var wave = document.getElementById('loadwave');
+  hero.load(order, function (n) {
+    wave.setAttribute('stroke-dashoffset', String(200 - 200 * Math.min(1, n / needed)));
+    if (n === 1) hero.draw(0, 0, 0);
+    if (!loaderDone && n >= needed) { loaderDone = true; setTimeout(finishLoader, 250); intro(); }
+  });
+  setTimeout(function () { if (!loaderDone) { loaderDone = true; finishLoader(); intro(); } }, 6000);
+
+  var heroState = { f: 0, loop: false };
+  function drawHero() {
+    if (heroState.loop) return;
+    var f = Math.max(0, Math.min(SCRUB - 1, heroState.f)), a = Math.floor(f);
+    hero.draw(a, Math.min(SCRUB - 1, a + 1), f - a);
+  }
+  var loopT0 = 0, loopVisible = true;
+  function loopTick(now) {
+    if (heroState.loop && loopVisible) {
+      if (!loopT0) loopT0 = now;
+      var x = ((now - loopT0) / 1000 * 10) % LOOP, a = Math.floor(x);
+      hero.draw(SCRUB + a, SCRUB + (a + 1) % LOOP, x - a);
+    }
+    requestAnimationFrame(loopTick);
+  }
+  requestAnimationFrame(loopTick);
+  window.addEventListener('resize', function () { hero.size(); drawHero(); if (tumble) tumble.size(); });
+
+  /* ---------- Formular (nur Vorschau, nichts wird gesendet) ---------- */
+  var form = document.getElementById('form'), ft = document.getElementById('ftext');
+  ft.addEventListener('input', function () { document.getElementById('fcount').textContent = ft.value.length + ' / 600'; });
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var mail = document.getElementById('fmail').value.trim(), err = document.getElementById('ferr');
+    var contact = /(\+?\d[\d\s\/-]{6,}\d)|(@\w)|(https?:|www\.)|(\b\w+\s?(punkt|dot)\s?(de|com)\b)/i;
+    if (ft.value.trim().length < 3) { err.textContent = 'Schreib ein paar Worte in die Flasche.'; return; }
+    if (contact.test(ft.value)) { err.textContent = 'Das Meer nimmt keine Kontaktdaten an. Lass Namen, Nummern und Links weg.'; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { err.textContent = 'Wir brauchen eine E-Mail, um dir den Start zu sagen.'; return; }
+    err.textContent = ''; form.classList.add('sent');
+  });
+
+  var tumble = null;
+
+  if (!hasGsap) { finishLoader(); heroState.f = SCRUB - 1; drawHero(); return; }
+
+  gsap.registerPlugin(ScrollTrigger);
+  var lenis = null;
+  if (!reduce && typeof window.Lenis === 'function') {
+    lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9 });
+    window.__lenisJump = function (y) { lenis.scrollTo(y, { immediate: true, force: true }); };
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
+    gsap.ticker.lagSmoothing(0);
+  }
+  document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var id = a.getAttribute('href'); var el = id.length > 1 && document.querySelector(id);
+      if (!el) return; e.preventDefault();
+      if (lenis) lenis.scrollTo(el, { duration: 2.2 }); else el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+    });
+  });
+
+  function words(el) { return el ? el.querySelectorAll('.word > span') : []; }
+  function intro() {
+    gsap.from(words(document.querySelector('#htitle h1')), { yPercent: 110, duration: 1.6, ease: 'expo.out', delay: 0.25 });
+    gsap.from(words(document.querySelector('#htitle p')), { yPercent: 110, duration: 1.2, ease: 'expo.out', stagger: 0.04, delay: 0.6 });
+    gsap.from('#hint', { opacity: 0, y: 10, duration: 1, delay: 1.3 });
+  }
+
+  /* Überschriften: Wort für Wort aus der Linie heben, sobald sie ins Bild kommen */
+  document.querySelectorAll('section:not(#ankunft) [data-split]').forEach(function (el) {
+    if (el.closest('#sc1') || el.closest('#fc1')) return;
+    gsap.from(words(el), { yPercent: 110, duration: 1.2, ease: 'expo.out', stagger: 0.05,
+      scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none reverse' } });
+  });
+
+  /* Kapitelanzeige rechts */
+  var tideLinks = document.querySelectorAll('.tide a');
+  tideLinks.forEach(function (a) {
+    var sec = document.getElementById(a.dataset.k);
+    ScrollTrigger.create({ trigger: sec, start: 'top 55%', end: 'bottom 45%', onToggle: function (self) { if (self.isActive) { tideLinks.forEach(function (x) { x.classList.toggle('on', x === a); }); } } });
+  });
+
+  if (reduce) {
+    heroState.f = SCRUB - 1; drawHero();
+    gsap.set(['#hs1', '#hs2'], { opacity: 0 }); gsap.set('#hs3', { opacity: 1 }); gsap.set('#htitle', { opacity: 0 });
+    document.querySelectorAll('.letter').forEach(function (l) { l.style.opacity = 1; });
+    return;
+  }
+
+  var mm = gsap.matchMedia();
+
+  /* ---------- 1 · Ankunft ---------- */
+  var hTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: {
+    trigger: '#ankunft', start: 'top top', end: 'bottom bottom', scrub: 0.6,
+    onUpdate: function (st) { heroState.loop = st.progress > 0.985; if (!heroState.loop) loopT0 = 0; },
+    onToggle: function (st) { loopVisible = st.isActive || st.progress >= 1; }
+  } });
+  hTl.to(heroState, { f: SCRUB - 1, duration: 0.86, onUpdate: drawHero }, 0)
+     .to('#htitle', { opacity: 0, y: -60, duration: 0.1 }, 0.03)
+     .to('#hint', { opacity: 0, duration: 0.04 }, 0.01)
+     .fromTo('#hs1', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.07 }, 0.16)
+     .to('#hs1', { opacity: 0, y: -40, duration: 0.07 }, 0.36)
+     .fromTo('#hs2', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.07 }, 0.47)
+     .to('#hs2', { opacity: 0, y: -40, duration: 0.07 }, 0.68)
+     .fromTo('#hs3', { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.08 }, 0.8)
+     .to({}, { duration: 0.06 });
+  ScrollTrigger.create({ trigger: '#ankunft', start: 'bottom bottom', end: 'bottom top', onToggle: function (st) { loopVisible = true; } });
+
+  /* ---------- 2 · Schreiben ---------- */
+  var letter = document.getElementById('letter'), txt = letter.textContent;
+  letter.innerHTML = txt.split('').map(function (ch) { return '<span class="c">' + (ch === ' ' ? ' ' : ch) + '</span>'; }).join('') + '<span class="caret"></span>';
+  letter.setAttribute('aria-label', txt);
+  var chars = letter.querySelectorAll('.c'), countEl = document.getElementById('count');
+  var typed = { n: 0 };
+  function renderTyped() {
+    var n = Math.round(typed.n);
+    for (var i = 0; i < chars.length; i++) chars[i].style.opacity = i < n ? 1 : 0.06;
+    countEl.textContent = n + ' / 600';
+  }
+  var paths = document.querySelectorAll('.drawing path');
+  paths.forEach(function (p) { var L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = L; });
+  var wTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#schreiben', start: 'top top', end: '+=330%', scrub: 0.8, pin: '#schreiben .pin' } });
+  wTl.from(words(document.querySelector('#sc1 h2')), { yPercent: 110, stagger: 0.02, duration: 0.08, ease: 'power3.out' }, 0)
+     .fromTo('#card', { rotateX: 18, rotateY: -14, y: 80, opacity: 0 }, { rotateX: 4, rotateY: -6, y: 0, opacity: 1, duration: 0.12, ease: 'power2.out' }, 0)
+     .to(typed, { n: chars.length, duration: 0.3, onUpdate: renderTyped }, 0.08)
+     .to('#sc1', { opacity: 0, y: -30, duration: 0.06 }, 0.42)
+     .to('#card', { rotateY: 180, rotateX: 0, duration: 0.16, ease: 'power2.inOut' }, 0.42)
+     .fromTo('#sc2', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.06 }, 0.5)
+     .to(paths, { strokeDashoffset: 0, duration: 0.05, stagger: 0.035 }, 0.56)
+     .to('#sc2', { opacity: 0, y: -30, duration: 0.05 }, 0.8)
+     .fromTo('#sc3', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.05 }, 0.84)
+     .fromTo('#standbottle', { opacity: 0, y: 60, rotate: 6 }, { opacity: 1, y: 0, rotate: 0, duration: 0.08, ease: 'power3.out' }, 0.8)
+     .to('#card', { scaleX: 0.07, scaleY: 0.42, rotateY: 180, x: function () { var b = document.getElementById('standbottle').getBoundingClientRect(), c = document.getElementById('card').getBoundingClientRect(); return (b.left + b.width / 2) - (c.left + c.width / 2); }, y: function () { var b = document.getElementById('standbottle').getBoundingClientRect(), c = document.getElementById('card').getBoundingClientRect(); return (b.top + b.height * 0.55) - (c.top + c.height / 2); }, duration: 0.1, ease: 'power3.in' }, 0.86)
+     .to('#card', { opacity: 0, duration: 0.02 }, 0.95)
+     .to('#standbottle', { y: -10, duration: 0.02, ease: 'power2.out' }, 0.96)
+     .to('#standbottle', { y: 0, duration: 0.02, ease: 'bounce.out' }, 0.98)
+     .to('#corknote', { opacity: 1, duration: 0.02 }, 0.97);
+
+  /* ---------- 3 · Wurf ---------- */
+  var tcan = document.getElementById('tumble');
+  tumble = new Seq(tcan, 'seq/w/', 48, '.webp'); tumble.fit = 'contain';
+  tumble.size = function () { var dpr = Math.min(window.devicePixelRatio || 1, 2); tcan.width = Math.round(180 * dpr); tcan.height = Math.round(180 * dpr); this.last = ''; };
+  tumble.size();
+  var tOrder = []; for (var q = 0; q < 48; q++) tOrder.push(q);
+  ScrollTrigger.create({ trigger: '#schreiben', start: 'top bottom', once: true, onEnter: function () { tumble.load(tOrder); } });
+  var meer = document.getElementById('meer');
+  /* Horizont im Bild: Anteil der Bildhöhe (Querformat und Hochformat) */
+  function horizon() {
+    var r = meer.getBoundingClientRect(), iw = meer.naturalWidth || 1600, ih = meer.naturalHeight || 1000;
+    var s = Math.max(r.width / iw, r.height / ih), h = ih * s, top = (r.height - h) / 2;
+    var frac = portrait ? 0.335 : 0.29;
+    return { x: r.width * 0.56, y: top + h * frac };
+  }
+  var throwState = { p: 0 };
+  function placeBottle() {
+    var p = throwState.p, W = window.innerWidth, H = window.innerHeight, hz = horizon();
+    var e = 1 - Math.pow(1 - p, 2.2);
+    var x0 = W * 0.42, y0 = H * 1.05, x1 = hz.x, y1 = hz.y;
+    var x = x0 + (x1 - x0) * e, y = y0 + (y1 - y0) * e - Math.sin(Math.PI * Math.min(1, e)) * H * 0.42;
+    var sc = 1.25 - 1.15 * e;
+    tcan.style.transform = 'translate(' + (x - 90) + 'px,' + (y - 90) + 'px) scale(' + Math.max(0.06, sc) + ') rotate(' + (-20 + 50 * p) + 'deg)';
+    tcan.style.opacity = p > 0.985 ? 0 : 1;
+    var fr = (p * 48 * 2.25) % 48, a = Math.floor(fr);
+    tumble.draw(a, (a + 1) % 48, fr - a);
+    ['r1', 'r2'].forEach(function (id, k) {
+      var el = document.getElementById(id), q = Math.max(0, Math.min(1, (p - 0.96 - k * 0.012) / 0.04));
+      el.style.transform = 'translate(' + (hz.x - 5) + 'px,' + (hz.y - 1) + 'px) scale(' + (1 + q * (portrait ? 9 : 14)) + ',' + (1 + q * 2.2) + ')';
+    });
+  }
+  var thTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#wurf', start: 'top top', end: '+=230%', scrub: 0.7, pin: '#wurf .pin', onRefresh: placeBottle } });
+  thTl.fromTo('#meer', { scale: 1.12, yPercent: 3 }, { scale: 1, yPercent: 0, duration: 1 }, 0)
+      .to(throwState, { p: 1, duration: 0.72, onUpdate: placeBottle }, 0.12)
+      .to('#wurf .copy', { opacity: 0, y: -40, duration: 0.12 }, 0.5)
+      .fromTo('#r1', { opacity: 0 }, { opacity: 1, duration: 0.02 }, 0.82)
+      .to('#r1', { opacity: 0, duration: 0.12 }, 0.86)
+      .fromTo('#r2', { opacity: 0 }, { opacity: 1, duration: 0.02 }, 0.84)
+      .to('#r2', { opacity: 0, duration: 0.14 }, 0.88)
+      .fromTo('#after', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.1 }, 0.86);
+  placeBottle();
+
+  /* ---------- 4 · Drift ---------- */
+  var R = { start: [297, 236.6], wege: [[237, 193.3], [177, 158.7], [129, 122.3]], flasche: [92, 87.6], prognose: [[63, 75.5], [39, 70.3]] };
+  function cr(pts) {
+    var d = 'M' + pts[0][0] + ' ' + pts[0][1];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, pts.length - 1)];
+      d += ' C ' + (p1[0] + (p2[0] - p0[0]) / 6) + ' ' + (p1[1] + (p2[1] - p0[1]) / 6) + ', ' + (p2[0] - (p3[0] - p1[0]) / 6) + ' ' + (p2[1] - (p3[1] - p1[1]) / 6) + ', ' + p2[0] + ' ' + p2[1];
+    }
+    return d;
+  }
+  var pts = [R.start].concat(R.wege, [R.flasche]);
+  var routeD = cr(pts);
+  var route = document.getElementById('route'), routeShadow = document.getElementById('routeShadow'), marker = document.getElementById('marker');
+  route.setAttribute('d', routeD); routeShadow.setAttribute('d', routeD);
+  document.getElementById('prog').setAttribute('d', cr([R.flasche].concat(R.prognose)));
+  document.getElementById('startdot').setAttribute('cx', R.start[0]); document.getElementById('startdot').setAttribute('cy', R.start[1]);
+  var halo = document.getElementById('halo'); halo.setAttribute('cx', R.flasche[0]); halo.setAttribute('cy', R.flasche[1]);
+  var stops = document.getElementById('stops');
+  R.wege.forEach(function (p) { var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]); c.setAttribute('r', 3.5); c.setAttribute('fill', '#FBF8F2'); c.setAttribute('stroke', '#1E2B30'); c.setAttribute('opacity', 0); stops.appendChild(c); });
+  var RL = route.getTotalLength();
+  /* Gestrichelte Route wird über eine Maske aufgedeckt: Schattenlinie per Dash, Punkte per Clip */
+  routeShadow.style.strokeDasharray = RL; routeShadow.style.strokeDashoffset = RL;
+  var clip = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath'); clip.id = 'rclip';
+  var cpath = document.createElementNS('http://www.w3.org/2000/svg', 'path'); cpath.setAttribute('d', routeD); cpath.setAttribute('fill', 'none');
+  var mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask'); mask.id = 'rmask';
+  var mpath = document.createElementNS('http://www.w3.org/2000/svg', 'path'); mpath.setAttribute('d', routeD); mpath.setAttribute('fill', 'none'); mpath.setAttribute('stroke', '#fff'); mpath.setAttribute('stroke-width', '8'); mpath.setAttribute('stroke-linecap', 'round');
+  mpath.style.strokeDasharray = RL; mpath.style.strokeDashoffset = RL;
+  mask.appendChild(mpath); route.parentNode.insertBefore(mask, route.parentNode.firstChild); route.setAttribute('mask', 'url(#rmask)');
+  var drift = { p: 0 };
+  var mapEl = document.getElementById('map');
+  function chipAt(id, p, dx, dy) {
+    var el = document.getElementById(id), box = mapEl.getBoundingClientRect(), k = box.width / 350;
+    el.style.left = (p[0] * k + dx) + 'px'; el.style.top = (p[1] * (box.height / 300) + dy) + 'px';
+  }
+  function drawDrift() {
+    var L = RL * drift.p, pt = route.getPointAtLength(L);
+    routeShadow.style.strokeDashoffset = RL - L; mpath.style.strokeDashoffset = RL - L;
+    marker.setAttribute('cx', pt.x); marker.setAttribute('cy', pt.y);
+    var cs = stops.children; for (var i = 0; i < cs.length; i++) cs[i].setAttribute('opacity', drift.p > (i + 1) / (cs.length + 1) ? 1 : 0);
+    document.getElementById('sDays').textContent = Math.round(11 * drift.p);
+    document.getElementById('sKm').textContent = Math.round(412 * drift.p);
+    document.getElementById('sFound').textContent = (drift.p > 0.62 ? 2 : drift.p > 0.3 ? 1 : 0) + '×';
+    halo.setAttribute('opacity', drift.p > 0.98 ? 0.85 : 0);
+    document.getElementById('prog').setAttribute('opacity', drift.p > 0.98 ? 1 : 0);
+  }
+  function placeChips() { chipAt('cA', R.wege[0], 14, -34); chipAt('cB', R.wege[2], 12, -32); chipAt('cNow', R.flasche, 22, -30); }
+  var dTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#drift', start: 'top top', end: '+=260%', scrub: 0.8, pin: '#drift .pin', onRefresh: placeChips } });
+  dTl.fromTo('#map', { rotateX: 52, rotateZ: -8, scale: 0.86, y: 60 }, { rotateX: 0, rotateZ: 0, scale: 1, y: 0, duration: 0.3, ease: 'power2.out' }, 0)
+     .fromTo('#cStart', { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.05 }, 0.24)
+     .to(drift, { p: 1, duration: 0.6, onUpdate: drawDrift }, 0.3)
+     .to('#cA', { opacity: 1, y: 0, duration: 0.04 }, 0.46).to('#cA', { opacity: 0, duration: 0.04 }, 0.62)
+     .to('#cB', { opacity: 1, y: 0, duration: 0.04 }, 0.7).to('#cB', { opacity: 0, duration: 0.04 }, 0.86)
+     .to('#cNow', { opacity: 1, y: 0, duration: 0.04 }, 0.9)
+     .to({}, { duration: 0.06 });
+  placeChips(); drawDrift();
+
+  /* ---------- 5 · Finden: Nacht ---------- */
+  gsap.timeline({ scrollTrigger: { trigger: '#finden', start: 'top 85%', end: 'top 15%', scrub: true } })
+    .to('#nightsky', { opacity: 1, ease: 'none' });
+  /* Nachtmodus der Navigation folgt einfach der Helligkeit des Himmels */
+  var sky = document.getElementById('nightsky'), wasNight = false;
+  gsap.ticker.add(function () { var n = parseFloat(getComputedStyle(sky).opacity) > 0.5; if (n !== wasNight) { wasNight = n; document.body.classList.toggle('is-night', n); } });
+  var fTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#finden', start: 'top top', end: '+=260%', scrub: 0.8, pin: '#finden .pin' } });
+  fTl.from(words(document.querySelector('#fc1 h2')), { yPercent: 110, stagger: 0.02, duration: 0.08, ease: 'power3.out' }, 0)
+     .fromTo('#phone', { rotateX: 24, rotateY: -22, rotateZ: 4, y: 140, opacity: 0 }, { rotateX: 0, rotateY: 0, rotateZ: 0, y: 0, opacity: 1, duration: 0.22, ease: 'power3.out' }, 0)
+     .fromTo('#glow', { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.06 }, 0.22)
+     .to('#glow', { scale: 1.08, opacity: 0.6, duration: 0.05, yoyo: true, repeat: 3 }, 0.28)
+     .fromTo('#tap', { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1.4, duration: 0.04 }, 0.46)
+     .to('#tap', { opacity: 0, duration: 0.03 }, 0.5)
+     .to('#sheet', { yPercent: -105, duration: 0.14, ease: 'power3.out' }, 0.5)
+     .to('#fc1', { opacity: 0, y: -30, duration: 0.05 }, 0.68)
+     .fromTo('#fc2', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.05 }, 0.73)
+     .fromTo('#shell', { opacity: 0, x: function () { var p = document.getElementById('phone').getBoundingClientRect(); return p.left + p.width * 0.5 - 43; }, y: function () { var p = document.getElementById('phone').getBoundingClientRect(); return p.top + p.height * 0.86; }, rotate: 0, scale: 0.6 },
+              { opacity: 1, x: function () { return window.innerWidth * 0.1; }, y: function () { return window.innerHeight * 0.08; }, rotate: -200, scale: 0.9, duration: 0.2, ease: 'power2.inOut' }, 0.76)
+     .to('#shell', { opacity: 0, duration: 0.04 }, 0.95);
+
+  /* ---------- 6 · Staffel: waagerecht ---------- */
+  var track = document.getElementById('track');
+  var sTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#staffel', start: 'top top', end: function () { return '+=' + Math.max(window.innerHeight * 2, track.scrollWidth - window.innerWidth + window.innerHeight); }, scrub: 0.8, pin: '#staffel .pin', invalidateOnRefresh: true } });
+  sTl.to(track, { x: function () { return -(track.scrollWidth - window.innerWidth); }, duration: 1 }, 0)
+     .to('#nightsky', { opacity: 0, duration: 0.25 }, 0.75)
+     .to('#staffel .panel.intro', { opacity: 0.25, duration: 0.2 }, 0.2);
+  document.querySelectorAll('.relay').forEach(function (el, i) {
+    gsap.from(el, { y: 80, rotate: i % 2 ? 6 : -6, opacity: 0, duration: 1, ease: 'power3.out',
+      scrollTrigger: { trigger: el, containerAnimation: sTl, start: 'left 88%', toggleActions: 'play none none reverse' } });
+  });
+
+  /* ---------- 7 · Regal: Brett für Brett ---------- */
+  var shelf = document.getElementById('shelf');
+  var seas = [['Nordsee', 'Biskaya', 'Ostsee', 'Ägäis'], ['Nordatlantik', 'Irische See', 'Ligurisches Meer', 'Ärmelkanal'], ['Kattegat', 'Adria', 'Nordsee', 'Azoren']];
+  var edgeY = [37.5, 68.8, 99.2];
+  seas.forEach(function (row, r) { row.forEach(function (s, c) { var t = document.createElement('span'); t.className = 'tag r' + r; t.textContent = s; t.style.left = (12.5 + 25 * c) + '%'; t.style.top = 'calc(' + edgeY[r] + '% - 2.6%)'; shelf.appendChild(t); }); });
+  var rTl = gsap.timeline({ scrollTrigger: { trigger: '#shelf', start: 'top 75%', end: 'bottom 55%', scrub: 0.8 } });
+  ['#sh1', '#sh2', '#sh3'].forEach(function (id, r) {
+    rTl.to(id, { scaleY: 0, duration: 0.25, ease: 'power2.inOut' }, r * 0.3)
+       .to('#shelf .tag.r' + r, { opacity: 1, scale: 1, duration: 0.12, stagger: 0.03, ease: 'back.out(2)' }, r * 0.3 + 0.18);
+  });
+  gsap.fromTo('#shelf', { y: 60, rotate: 1.5 }, { y: 0, rotate: 0, ease: 'none', scrollTrigger: { trigger: '#regal', start: 'top bottom', end: 'center center', scrub: true } });
+
+  /* ---------- 8 · Durchgestrichen ---------- */
+  document.querySelectorAll('.not').forEach(function (row) {
+    var w = row.querySelector('.w');
+    gsap.fromTo(w, { '--s': 0 }, { '--s': 1, ease: 'power2.inOut', scrollTrigger: { trigger: row, start: 'top 80%', end: 'top 45%', scrub: 0.6 } });
+    gsap.from(row.querySelector('p'), { opacity: 0, x: 30, duration: 1, ease: 'power3.out', scrollTrigger: { trigger: row, start: 'top 70%', toggleActions: 'play none none reverse' } });
+  });
+
+  /* ---------- Rest: sanft einblenden ---------- */
+  gsap.utils.toArray('#erste .form, #mehr .offer, #fragen details').forEach(function (el, i) {
+    gsap.from(el, { y: 50, opacity: 0, duration: 1.1, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 88%', toggleActions: 'play none none reverse' } });
+  });
+  gsap.to('#footwave', { attr: { d: 'M0 0 H1440 V22 C 1200 2, 960 40, 720 22 S 240 2, 0 22 Z' }, duration: 4, ease: 'sine.inOut', repeat: -1, yoyo: true });
+
+  window.addEventListener('load', function () { ScrollTrigger.refresh(); });
+})();
+</script>
+</body>
+</html>
